@@ -1,7 +1,8 @@
 use sakila;
 
-
-# _____________________________ Actor-Centric Analysis_____________________________
+-- ================================================================================================
+-- _____________________________________ Actor-Centric Analysis____________________________________
+-- ================================================================================================
 
 ## List all actors along with the total number of films they've appeared in.
 SELECT actor.actor_id, concat(actor.first_name, " " ,actor.last_name) as actor_name, COUNT(film_actor.film_id) AS film_count
@@ -149,3 +150,209 @@ WHERE category.name = 'Comedy';
 - Helps the store categorize films and create genre-specific sections, making it easier for customers to find films they enjoy. 
 - By stocking a variety of films across different genres, the store can appeal to a broader customer base and increase rental diversity.
 */
+
+
+
+
+-- ================================================================================================
+-- _________________________________Generic Actor Centric Analysis_________________________________
+-- ================================================================================================ 
+
+
+# Number of rents based on month and store
+SELECT EXTRACT(YEAR_MONTH FROM rental_date) AS rental_month, store.store_id AS name_store, COUNT(*) AS numberof_rents
+FROM film
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+JOIN inventory ON film.film_id = inventory.film_id
+JOIN store ON inventory.store_id = store.store_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+GROUP BY name_store, rental_month
+ORDER BY rental_month;
+
+
+
+
+
+# Total revenue based on category and store 
+SELECT category.name AS film_genre, store.store_id AS name_store, COUNT(*) AS numberof_rents
+FROM film
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+JOIN inventory ON film.film_id = inventory.film_id
+JOIN store ON inventory.store_id = store.store_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+GROUP BY name_store, film_genre
+ORDER BY film_genre;
+
+
+
+
+
+
+# Total revenue based on month and store
+SELECT EXTRACT(YEAR_MONTH FROM rental_date) AS rental_month, store.store_id AS name_store, SUM(payment.amount) AS total_revenue
+FROM film
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+JOIN inventory ON film.film_id = inventory.film_id
+JOIN store ON inventory.store_id = store.store_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+JOIN payment ON rental.rental_id = payment.rental_id
+GROUP BY name_store, rental_month
+ORDER BY rental_month;
+
+
+
+
+
+
+# Total revenue based on category and store
+SELECT category.name AS film_genre, store.store_id AS name_store, SUM(payment.amount) AS total_revenue
+FROM film
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+JOIN inventory ON film.film_id = inventory.film_id
+JOIN store ON inventory.store_id = store.store_id
+JOIN rental ON inventory.inventory_id = rental.inventory_id
+JOIN payment ON rental.rental_id = payment.rental_id
+GROUP BY name_store, film_genre
+ORDER BY film_genre;
+
+
+
+
+
+
+
+
+# Number of rentals of the highest film genre per year month in store 1
+SELECT rental_month, film_genre, MAX(numberof_rents) AS max_numberof_rents
+FROM (SELECT EXTRACT(YEAR_MONTH FROM rental_date) AS rental_month, category.name AS film_genre, COUNT(*) AS numberof_rents
+      FROM film
+      JOIN film_category ON film.film_id = film_category.film_id
+      JOIN category ON film_category.category_id = category.category_id
+      JOIN inventory ON film.film_id = inventory.film_id
+      JOIN store ON inventory.store_id = store.store_id
+      JOIN rental ON inventory.inventory_id = rental.inventory_id
+      WHERE store.store_id = '1'
+      GROUP BY film_genre, rental_month
+      ORDER BY rental_month) AS x
+GROUP BY rental_month
+ORDER BY rental_month;
+
+
+
+
+
+
+
+
+
+
+# Popularity and Versatality of Actors
+SELECT actor.actor_id, actor.first_name, actor.last_name, COUNT(*) as numberof_films, COUNT(DISTINCT category.name) as numberof_genres
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+GROUP BY actor.actor_id
+ORDER by actor.actor_id;
+
+
+
+
+
+
+
+# Least Popular Actor
+SELECT actor.actor_id, actor.first_name, actor.last_name, COUNT(*) AS numberof_films, COUNT(DISTINCT category.name) AS numberof_genres
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+GROUP BY actor.actor_id
+HAVING numberof_films = (SELECT MIN(x)
+                         FROM (SELECT a.actor_id, a.first_name, a.last_name, COUNT(*) AS x
+                               FROM film AS f
+                               JOIN film_actor AS fa ON f.film_id = fa.film_id
+                               JOIN actor AS a ON fa.actor_id = a.actor_id
+                               GROUP BY a.actor_id) AS y)
+ORDER by numberof_films desc, numberof_genres desc;
+
+
+
+
+
+
+
+
+# Most Popular Actor
+SELECT actor.actor_id, actor.first_name, actor.last_name, COUNT(*) AS numberof_films, COUNT(DISTINCT category.name) AS numberof_genres
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+GROUP BY actor.actor_id
+HAVING numberof_films = (SELECT MAX(x)
+                         FROM (SELECT a.actor_id, a.first_name, a.last_name, COUNT(*) AS x
+                               FROM film AS f
+                               JOIN film_actor AS fa ON f.film_id = fa.film_id
+                               JOIN actor AS a ON fa.actor_id = a.actor_id
+                               GROUP BY a.actor_id) AS y)
+ORDER by numberof_films desc, numberof_genres desc;
+
+
+
+
+
+
+
+
+
+
+
+# Least Versatile ACtors
+SELECT actor.actor_id, actor.first_name, actor.last_name, COUNT(*) AS numberof_films, COUNT(DISTINCT category.name) AS numberof_genres
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+GROUP BY actor.actor_id
+HAVING numberof_genres = (SELECT MIN(x)
+                         FROM (SELECT a.actor_id, a.first_name, a.last_name, COUNT(DISTINCT c.name) AS x
+                               FROM film AS f
+                               JOIN film_actor AS fa ON f.film_id = fa.film_id
+                               JOIN actor AS a ON fa.actor_id = a.actor_id
+                               JOIN film_category AS fc ON f.film_id = fc.film_id
+                               JOIN category AS c ON fc.category_id = c.category_id
+                               GROUP BY a.actor_id) AS y)
+ORDER by numberof_genres desc, numberof_films desc;
+
+
+
+
+
+
+
+# Most Versatile Actors
+SELECT actor.actor_id, actor.first_name, actor.last_name, COUNT(*) AS numberof_films, COUNT(DISTINCT category.name) AS numberof_genres
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+JOIN film_category ON film.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+GROUP BY actor.actor_id
+HAVING numberof_genres = (SELECT MAX(x)
+                         FROM (SELECT a.actor_id, a.first_name, a.last_name, COUNT(DISTINCT c.name) AS x
+                               FROM film AS f
+                               JOIN film_actor AS fa ON f.film_id = fa.film_id
+                               JOIN actor AS a ON fa.actor_id = a.actor_id
+                               JOIN film_category AS fc ON f.film_id = fc.film_id
+                               JOIN category AS c ON fc.category_id = c.category_id
+                               GROUP BY a.actor_id) AS y)
+ORDER by numberof_genres desc, numberof_films desc;
